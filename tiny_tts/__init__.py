@@ -11,6 +11,7 @@ from tiny_tts.utils.config import (
     N_SPEAKERS, SPK2ID, MODEL_PARAMS,
 )
 from tiny_tts.infer import load_engine
+from tiny_tts.streaming import StreamingTinyTTS
 
 class TinyTTS:
     def __init__(self, checkpoint_path=None, device=None):
@@ -38,8 +39,8 @@ class TinyTTS:
                 
         self.model = load_engine(checkpoint_path, self.device)
 
-    def speak(self, text, output_path="output.wav", speaker="MALE", speed=1.0):
-        """Synthesize text to speech and save to output_path."""
+    def synthesize_to_array(self, text, speaker="MALE", speed=1.0):
+        """Synthesize text and return a NumPy array at SAMPLING_RATE."""
         print(f"Synthesizing: {text}")
 
         # Normalize text
@@ -85,6 +86,11 @@ class TinyTTS:
             )
 
         audio_np = audio[0, 0].cpu().numpy()
+        return audio_np
+
+    def speak(self, text, output_path="output.wav", speaker="MALE", speed=1.0):
+        """Synthesize text to speech and save to output_path."""
+        audio_np = self.synthesize_to_array(text, speaker=speaker, speed=speed)
         sf.write(output_path, audio_np, SAMPLING_RATE)
         print(f"Saved audio to {output_path}")
         return audio_np

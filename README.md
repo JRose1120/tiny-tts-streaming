@@ -109,6 +109,42 @@ paragraph = (
 tts.speak(paragraph, output_path="paragraph.wav")
 ```
 
+### Streaming text input (chunked + pipelined)
+
+Use `StreamingTinyTTS` when text arrives incrementally (e.g. from an LLM token stream):
+
+```python
+import numpy as np
+import soundfile as sf
+
+from tiny_tts import TinyTTS, StreamingTinyTTS
+from tiny_tts.utils.config import SAMPLING_RATE
+
+tts = TinyTTS()
+streamer = StreamingTinyTTS(
+  tts,
+  speaker="MALE",
+  min_chunk_chars=30,
+  target_chunk_chars=90,
+  max_chunk_chars=160,
+  crossfade_ms=40,
+)
+
+streamer.push_text("This is partial text that just arrived. ")
+streamer.push_text("More text arrives later and is synthesized as a new chunk. ")
+streamer.push_text("The output chunks are overlap-blended to reduce seam artifacts.")
+
+streamer.end_input()
+audio_blocks = list(streamer.iter_audio(timeout=10.0))
+audio = np.concatenate(audio_blocks)
+sf.write("stream_output.wav", audio, SAMPLING_RATE)
+```
+
+Notes:
+- This is chunk-level streaming (pseudo-streaming), not stateful frame-level decoding.
+- Lower `target_chunk_chars` reduces latency but can reduce prosody consistency.
+- `crossfade_ms` in the 30-60ms range is usually a good tradeoff for smooth joins.
+
 ---
 
 ## Inference Benchmarks
